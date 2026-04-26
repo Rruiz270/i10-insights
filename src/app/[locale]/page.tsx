@@ -19,8 +19,38 @@ export default async function HubPage({
   return (
     <main>
       <Hero locale={locale} />
-      {articles.length === 0 ? <Empty locale={locale} /> : <ArticleList locale={locale} articles={articles} />}
+      {articles.length === 0 ? (
+        <Empty locale={locale} />
+      ) : (
+        <>
+          <ArticleList locale={locale} articles={articles} />
+          <NewsletterSection locale={locale} />
+        </>
+      )}
     </main>
+  );
+}
+
+function NewsletterSection({ locale }: { locale: Locale }) {
+  return (
+    <section className="bg-white border-t border-gray-200">
+      <div className="mx-auto max-w-3xl px-6 py-16 text-center">
+        <p className="text-xs font-semibold uppercase tracking-wider text-cyan">
+          Newsletter
+        </p>
+        <h2 className="mt-3 font-serif text-3xl text-navy">
+          {locale === "pt"
+            ? "Receba a próxima análise direto no seu e-mail."
+            : "Get the next analysis straight to your inbox."}
+        </h2>
+        <p className="mt-3 text-gray-600">
+          {locale === "pt"
+            ? "Boletim grátis. Sem spam. Cancele quando quiser."
+            : "Free newsletter. No spam. Unsubscribe anytime."}
+        </p>
+        <NewsletterForm locale={locale} />
+      </div>
+    </section>
   );
 }
 

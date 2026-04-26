@@ -31,9 +31,11 @@ function getTransporter(): Transporter | null {
 }
 
 function getFrom(): string {
-  // Match BNCC-COMPUTACAO's pattern: "Display Name <user@gmail>".
-  const explicit = process.env.EMAIL_FROM;
-  if (explicit) return explicit;
+  // Always send From: the authenticated Gmail user. Matches BNCC-COMPUTACAO.
+  // We deliberately ignore EMAIL_FROM here because it's a stale Resend default
+  // ("onboarding@resend.dev") in the shared Vercel env — authenticating as
+  // institutoi10.org@gmail.com but claiming From: resend.dev causes Gmail to
+  // either reject or have the recipient spam-filter aggressively (SPF/DMARC fail).
   const user = process.env.GMAIL_USER ?? "noreply@institutoi10.com.br";
   return `i10 Insights <${user}>`;
 }
