@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { randomBytes } from "node:crypto";
-import { buildConfirmEmail, sendEmail } from "@/lib/resend";
+import { buildConfirmEmail, sendEmail } from "@/lib/email";
 import { isLocale, SITE_URL } from "@/lib/i18n";
 
 export const runtime = "nodejs";
@@ -93,10 +93,10 @@ export async function POST(req: Request) {
     FROM insights.subscribers WHERE email = ${email}
   `;
 
-  // Surface the confirm URL only when Resend is intentionally disabled in dev
+  // Surface the confirm URL only when SMTP is intentionally disabled in dev
   // (so a developer can click through). Never expose in production.
   const devConfirmUrl =
-    sent.reason === "no-api-key" && process.env.NODE_ENV !== "production"
+    sent.reason === "no-smtp-config" && process.env.NODE_ENV !== "production"
       ? confirmUrl
       : undefined;
 
