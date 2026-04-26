@@ -28,6 +28,8 @@ export interface Article {
   hero_image_url: string | null;
   hero_image_alt_pt: string | null;
   hero_image_alt_en: string | null;
+  video_url: string | null;
+  video_aspect_ratio: string | null;
   citations: Array<{ url: string; title: string; publisher?: string }>;
 }
 
@@ -37,7 +39,8 @@ export async function getPublishedArticles(limit = 20): Promise<Article[]> {
     SELECT id, category, published_at,
            title_pt, title_en, slug_pt, slug_en,
            excerpt_pt, excerpt_en, body_pt, body_en,
-           hero_image_url, hero_image_alt_pt, hero_image_alt_en, citations
+           hero_image_url, hero_image_alt_pt, hero_image_alt_en,
+           video_url, video_aspect_ratio, citations
     FROM insights.articles
     ORDER BY published_at DESC
     LIMIT ${limit}

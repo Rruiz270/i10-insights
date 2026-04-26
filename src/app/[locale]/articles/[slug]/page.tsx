@@ -70,7 +70,16 @@ export default async function ArticlePage({
           dateStyle: "long",
         }).format(new Date(article.published_at))}
       </p>
-      {article.hero_image_url && (
+      {article.video_url ? (
+        <video
+          src={article.video_url}
+          poster={article.hero_image_url ?? undefined}
+          controls
+          playsInline
+          preload="metadata"
+          className="mt-8 aspect-[16/9] w-full rounded-lg bg-black"
+        />
+      ) : article.hero_image_url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={article.hero_image_url}
@@ -81,7 +90,7 @@ export default async function ArticlePage({
           }
           className="mt-8 aspect-[16/9] w-full rounded-lg object-cover"
         />
-      )}
+      ) : null}
       <div className="mt-8 text-gray-800 leading-7">
         {body.split(/\n{2,}/).map((para, i) => (
           <p key={i} className="mt-5">
