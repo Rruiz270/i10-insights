@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 export const dynamic = "force-dynamic";
 
 interface Vertical {
@@ -16,7 +14,12 @@ interface Vertical {
 
 // Add new admins here as we ship them. Each tile links to its vertical's
 // own auth-protected dashboard. Browser caches Basic Auth per host so a
-// single login at any tile carries to the others.
+// single login at any tile carries to the others on the same host.
+//
+// NOTE on hrefs: tiles use plain <a> (not Next.js <Link>) so navigation
+// is treated as cross-app — Next.js with basePath=/insights would
+// otherwise prepend /insights to internal Links and break absolute paths
+// like /bncc/admin or /sistemas/apm/dashboard.
 const VERTICALS: Vertical[] = [
   {
     key: "insights",
@@ -30,17 +33,6 @@ const VERTICALS: Vertical[] = [
     meta: "Drafts · Inscritos · Mailing",
   },
   {
-    key: "bncc",
-    name: "BNCC Computação",
-    description:
-      "Webinar BNCC + materiais pós-evento. Inscritos do webinar, downloads do kit de implementação.",
-    href: "/bncc/admin",
-    accentClass: "from-navy to-cyan",
-    iconLetter: "B",
-    status: "live",
-    meta: "Inscritos · Downloads",
-  },
-  {
     key: "captacao",
     name: "BNCC Captação",
     description:
@@ -51,6 +43,17 @@ const VERTICALS: Vertical[] = [
     iconLetter: "C",
     status: "live",
     meta: "Dashboard FUNDEB",
+  },
+  {
+    key: "computacao",
+    name: "BNCC Computação",
+    description:
+      "APM dashboard — downloads do kit, lista de inscritos, métricas do email marketing enviado pós-webinar.",
+    href: "/sistemas/apm/dashboard",
+    accentClass: "from-navy to-cyan",
+    iconLetter: "B",
+    status: "live",
+    meta: "APM · Downloads · Email marketing",
   },
   {
     key: "soon",
@@ -152,23 +155,18 @@ export default function AdminHub() {
                 </div>
               );
             }
-            if (v.external) {
-              return (
-                <a
-                  key={v.key}
-                  href={v.href}
-                  target="_blank"
-                  rel="noopener"
-                  className="block"
-                >
-                  {inner}
-                </a>
-              );
-            }
+            // Always use plain <a> — basePath would mangle Next.js Link href
+            // for cross-app paths (e.g. /sistemas/apm/dashboard).
             return (
-              <Link key={v.key} href={v.href} className="block">
+              <a
+                key={v.key}
+                href={v.href}
+                target={v.external ? "_blank" : undefined}
+                rel={v.external ? "noopener" : undefined}
+                className="block"
+              >
                 {inner}
-              </Link>
+              </a>
             );
           })}
         </div>
