@@ -150,9 +150,22 @@ export default async function ArticlePage({
       )}
 
       <article className="bg-white">
-        <div className="mx-auto max-w-3xl px-6 py-16">
-          <Body blocks={blocks} />
-          {article.citations.length > 0 && <Citations article={article} />}
+        <div className="mx-auto max-w-6xl px-6 py-16">
+          <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_240px] lg:gap-12">
+            <div className="min-w-0 max-w-3xl">
+              <KeyInsight blocks={blocks} locale={locale} />
+              <Body blocks={blocks} />
+              {article.citations.length > 0 && <Citations article={article} />}
+            </div>
+            <aside className="hidden lg:block">
+              <TocSidebar
+                headings={blocks
+                  .filter((b): b is Extract<Block, { kind: "h2" }> => b.kind === "h2")
+                  .map((h) => ({ text: h.text, anchor: h.anchor }))}
+                locale={locale}
+              />
+            </aside>
+          </div>
         </div>
 
         <section className="border-y border-gray-200 bg-off-white">
@@ -176,9 +189,25 @@ export default async function ArticlePage({
 }
 
 type Block =
-  | { kind: "h2"; text: string }
+  | { kind: "h2"; text: string; anchor: string }
   | { kind: "p"; text: string; isStat?: boolean }
-  | { kind: "quote"; text: string };
+  | { kind: "quote"; text: string }
+  | { kind: "image"; url: string; alt: string }
+  | { kind: "ol"; items: string[] }
+  | { kind: "ul"; items: string[] };
+
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+const IMAGE_LINE_RE = /^!\[([^\]]*)\]\(([^)]+)\)$/;
+const OL_ITEM_RE = /^\d+\.\s+(.+)$/;
+const UL_ITEM_RE = /^[-*]\s+(.+)$/;
 
 function parseMarkdownBlocks(md: string): Block[] {
   const lines = md.split(/\n+/);
@@ -190,8 +219,16 @@ function parseMarkdownBlocks(md: string): Block[] {
       i++;
       continue;
     }
+    // Image on its own line
+    const im = ln.match(IMAGE_LINE_RE);
+    if (im) {
+      blocks.push({ kind: "image", alt: im[1], url: im[2] });
+      i++;
+      continue;
+    }
     if (ln.startsWith("## ")) {
-      blocks.push({ kind: "h2", text: ln.slice(3).trim() });
+      const text = ln.slice(3).trim();
+      blocks.push({ kind: "h2", text, anchor: slugify(text) });
       i++;
       continue;
     }
@@ -204,15 +241,42 @@ function parseMarkdownBlocks(md: string): Block[] {
       blocks.push({ kind: "quote", text: buf.join(" ") });
       continue;
     }
+    // Ordered list (consecutive `1. ...`, `2. ...` lines)
+    if (OL_ITEM_RE.test(ln)) {
+      const items: string[] = [];
+      while (i < lines.length && OL_ITEM_RE.test(lines[i].trim())) {
+        items.push(lines[i].trim().match(OL_ITEM_RE)![1]);
+        i++;
+      }
+      blocks.push({ kind: "ol", items });
+      continue;
+    }
+    // Unordered list
+    if (UL_ITEM_RE.test(ln)) {
+      const items: string[] = [];
+      while (i < lines.length && UL_ITEM_RE.test(lines[i].trim())) {
+        items.push(lines[i].trim().match(UL_ITEM_RE)![1]);
+        i++;
+      }
+      blocks.push({ kind: "ul", items });
+      continue;
+    }
+    // Paragraph — collect until next-block delimiter
     const buf: string[] = [ln];
     i++;
-    while (
-      i < lines.length &&
-      lines[i].trim() &&
-      !lines[i].trim().startsWith("## ") &&
-      !lines[i].trim().startsWith("> ")
-    ) {
-      buf.push(lines[i].trim());
+    while (i < lines.length) {
+      const next = lines[i].trim();
+      if (
+        !next ||
+        next.startsWith("## ") ||
+        next.startsWith("> ") ||
+        IMAGE_LINE_RE.test(next) ||
+        OL_ITEM_RE.test(next) ||
+        UL_ITEM_RE.test(next)
+      ) {
+        break;
+      }
+      buf.push(next);
       i++;
     }
     const text = buf.join(" ");
@@ -275,16 +339,26 @@ function renderInline(text: string): React.ReactNode[] {
 
 function Body({ blocks }: { blocks: Block[] }) {
   let firstParaShown = false;
+  let h2Index = 0;
   return (
     <div className="text-gray-800 leading-[1.8]">
       {blocks.map((b, i) => {
         if (b.kind === "h2") {
+          h2Index++;
+          const num = String(h2Index).padStart(2, "0");
           return (
             <h2
               key={i}
-              className="mt-12 mb-6 font-serif text-2xl text-navy sm:text-3xl"
+              id={b.anchor}
+              className="mt-16 mb-6 flex items-baseline gap-4 font-serif text-2xl text-navy scroll-mt-20 sm:text-3xl"
             >
-              {b.text}
+              <span
+                aria-hidden
+                className="font-sans text-sm font-bold tracking-widest text-cyan"
+              >
+                {num}
+              </span>
+              <span>{b.text}</span>
             </h2>
           );
         }
@@ -299,6 +373,59 @@ function Body({ blocks }: { blocks: Block[] }) {
               </span>
               <span className="ml-1">{renderInline(b.text)}</span>
             </blockquote>
+          );
+        }
+        if (b.kind === "image") {
+          return (
+            <figure key={i} className="my-12">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={b.url}
+                alt={b.alt}
+                className="w-full rounded-lg ring-1 ring-gray-200"
+                loading="lazy"
+              />
+              {b.alt && (
+                <figcaption className="mt-3 text-center text-sm italic text-gray-500">
+                  {b.alt}
+                </figcaption>
+              )}
+            </figure>
+          );
+        }
+        if (b.kind === "ol") {
+          return (
+            <ol key={i} className="my-8 space-y-3">
+              {b.items.map((it, j) => (
+                <li
+                  key={j}
+                  className="flex gap-4 border-l-2 border-gray-200 pl-4"
+                >
+                  <span
+                    aria-hidden
+                    className="mt-0.5 flex-shrink-0 font-serif text-2xl font-semibold text-cyan"
+                  >
+                    {String(j + 1).padStart(2, "0")}
+                  </span>
+                  <span className="text-base sm:text-lg">{renderInline(it)}</span>
+                </li>
+              ))}
+            </ol>
+          );
+        }
+        if (b.kind === "ul") {
+          return (
+            <ul key={i} className="my-6 space-y-2">
+              {b.items.map((it, j) => (
+                <li key={j} className="flex gap-3">
+                  <span
+                    aria-hidden
+                    className="mt-3 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-cyan"
+                  />
+                  <span className="text-base sm:text-lg">{renderInline(it)}</span>
+                </li>
+              ))}
+            </ul>
           );
         }
         const isFirst = !firstParaShown;
@@ -330,6 +457,64 @@ function Body({ blocks }: { blocks: Block[] }) {
         );
       })}
     </div>
+  );
+}
+
+function KeyInsight({
+  blocks,
+  locale,
+}: {
+  blocks: Block[];
+  locale: Locale;
+}) {
+  const firstQuote = blocks.find(
+    (b): b is Extract<Block, { kind: "quote" }> => b.kind === "quote",
+  );
+  if (!firstQuote) return null;
+  return (
+    <aside className="mb-12 rounded-xl bg-gradient-main p-8 text-white">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-pale">
+        {locale === "pt" ? "Insight principal" : "Key insight"}
+      </p>
+      <p className="mt-3 font-serif text-xl leading-snug sm:text-2xl">
+        {firstQuote.text}
+      </p>
+    </aside>
+  );
+}
+
+function TocSidebar({
+  headings,
+  locale,
+}: {
+  headings: Array<{ text: string; anchor: string }>;
+  locale: Locale;
+}) {
+  if (headings.length === 0) return null;
+  return (
+    <nav
+      aria-label={locale === "pt" ? "Sumário" : "Table of contents"}
+      className="sticky top-8"
+    >
+      <p className="text-xs font-semibold uppercase tracking-wider text-cyan">
+        {locale === "pt" ? "Sumário" : "On this page"}
+      </p>
+      <ol className="mt-4 space-y-3 border-l border-gray-200 pl-4">
+        {headings.map((h, i) => (
+          <li key={h.anchor} className="text-sm">
+            <a
+              href={`#${h.anchor}`}
+              className="block text-gray-600 hover:text-navy"
+            >
+              <span className="font-mono text-xs text-cyan">
+                {String(i + 1).padStart(2, "0")}
+              </span>{" "}
+              <span>{h.text}</span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
   );
 }
 

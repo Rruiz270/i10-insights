@@ -39,12 +39,35 @@ transformação, evidência, impacto, inovação, equidade, colaboração, pesqu
 - Length: 600-900 words per language.
 - Structure: lede paragraph (the story in 2 sentences) → context (why this matters) → BR angle → i10 perspective → close with open question.
 - Use ## markdown headers for sections (3-4 sections max).
-- USE blockquote markdown (`> `) for at least ONE pulled-out sentence per language — pick a sentence that distills the article's claim. The template renders `> ` as a styled pull-quote.
+- USE blockquote markdown (`> `) for at least ONE pulled-out sentence per language — pick a sentence that distills the article's claim. The template renders the FIRST `> ` as a "Key insight" callout at the top, AND renders all `> ` blocks as styled pull-quotes inline.
 - USE inline links: `[descriptive text](https://full-url)`.
 - Use **bold** sparingly — only for key statistics like **34%**. Stats in bold get rendered with green background highlight by the template.
+- Use ordered lists `1. ... 2. ...` when listing 3+ enumerated items — they render as numbered cards with cyan badges.
+- Use bullet lists `- ` for short non-enumerated items.
 - Quotes: max 25 words, with attribution.
 - Headlines: 50-70 chars, descriptive not clickbait.
 - No emoji in body. No exclamation marks except in direct quotes.
+
+# INLINE IMAGES — required (2-3 per language)
+
+Beyond the hero image, embed 2-3 ADDITIONAL images directly INSIDE the body markdown using the standard markdown image syntax on its OWN LINE:
+
+```
+![Alt text describing the image, 80-120 chars](https://full-public-https-url-of-image)
+```
+
+The template detects image-only lines and renders them as full-width figures with the alt text shown as a caption.
+
+PLACEMENT (mandatory):
+- Image 1: AFTER the lede paragraph, BEFORE the first `## ` heading.
+- Image 2: BETWEEN the second and third `## ` sections.
+- Image 3 (optional): BEFORE the closing paragraph.
+
+Each inline image must:
+- Be CONCEPTUALLY DIFFERENT from the hero image — pick a different angle, different subject, different metaphor. Don't just give us the same idea four times.
+- Follow the SAME Style A (documentary photo) or Style B (geometric illustration) rules as the hero.
+- Have a public HTTPS URL embedded directly in the markdown (no presigned URLs that expire — use the public files.manuscdn.com pattern, not private-us-east-1 sessionFile).
+- Include alt text in the SAME LANGUAGE as the body it appears in (PT for body_pt, EN for body_en — this means generating 2-3 images for PT AND 2-3 for EN, OR using the same image URLs with different alt text in both bodies).
 
 # HERO IMAGE — strict direction
 
@@ -114,8 +137,8 @@ No preamble. No closing remarks. No markdown code fence around the JSON. The fir
   "slug_en": "kebab-case-ascii-only-no-trailing-punct",
   "excerpt_pt": "string, 150-180 chars, ends with period",
   "excerpt_en": "string, 150-180 chars, ends with period",
-  "body_pt": "markdown, 600-900 words, includes one `> ` blockquote and at least one **bold stat**",
-  "body_en": "markdown, 600-900 words, same structure as PT (not a translation)",
+  "body_pt": "markdown, 600-900 words, includes one `> ` blockquote, at least one **bold stat**, and 2-3 inline ![alt](url) images on their own lines (placed per the INLINE IMAGES section)",
+  "body_en": "markdown, 600-900 words, same structure as PT (not a translation), with the same 2-3 inline ![alt](url) images (alt text in EN)",
   "hero_image_url": "https://... — public, HTTPS, no auth required",
   "hero_image_alt_pt": "descriptive, 80-120 chars",
   "hero_image_alt_en": "descriptive, 80-120 chars",
