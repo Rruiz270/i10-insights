@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isLocale, t, type Locale } from "@/lib/i18n";
 import { getPublishedArticles } from "@/lib/db";
+import { NewsletterForm } from "@/components/NewsletterForm";
 
 export const revalidate = 300; // ISR: refresh every 5 minutes
 
@@ -49,7 +50,7 @@ function Empty({ locale }: { locale: Locale }) {
           {t(locale, "hub.empty.title")}
         </h2>
         <p className="mt-4 text-gray-700">{t(locale, "hub.empty.body")}</p>
-        <NewsletterCard locale={locale} />
+        <NewsletterForm locale={locale} />
       </div>
     </section>
   );
@@ -99,22 +100,3 @@ function ArticleList({
   );
 }
 
-function NewsletterCard({ locale }: { locale: Locale }) {
-  return (
-    <div className="mt-12 rounded-xl bg-white p-8 ring-1 ring-gray-200">
-      <p className="text-xs font-semibold uppercase tracking-wider text-cyan">
-        Newsletter
-      </p>
-      <p className="mt-3 font-serif text-2xl text-navy">
-        {t(locale, "newsletter.cta")}
-      </p>
-      <p className="mt-2 text-sm text-gray-600">
-        {t(locale, "newsletter.subtitle")}
-      </p>
-      {/* Form is wired in Phase 3 with Resend + LGPD double opt-in. */}
-      <p className="mt-4 inline-block rounded-md bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500">
-        em breve · coming soon
-      </p>
-    </div>
-  );
-}
