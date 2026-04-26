@@ -1,15 +1,69 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Basic auth on every admin route. We check the path inside the function
-// (not just via matcher) so it works regardless of basePath behavior on
-// Vercel + rewrites. The matcher is broad and the function decides.
+// Auth on every admin route. Two ways to pass:
+//   1. Valid SSO cookie (i10_admin) — set when you successfully Basic-Auth at
+//      ANY admin on this host. Lets you log in once at /admin and roam.
+//   2. Basic Auth with ADMIN_PASSWORD — used on first visit and as fallback
+//      if cookie expired/missing.
+//
+// On a successful Basic Auth, this middleware ALSO sets the SSO cookie so the
+// next request (and any cross-app navigation under www.institutoi10.com.br)
+// passes through without prompting.
 
-export function middleware(req: NextRequest) {
-  const path = req.nextUrl.pathname;
+const COOKIE_NAME = "i10_admin";
+const SESSION_TTL_SECS = 8 * 60 * 60; // 8 hours
+const REALM = "Instituto i10 Admin";
 
-  // Match both with-and-without basePath since req.nextUrl.pathname behavior
-  // can differ between Edge runtime and Vercel rewrites.
-  const isAdmin =
+async function hmacHex(data: string, secret: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data));
+  return Array.from(new Uint8Array(sig))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function b64urlEncode(s: string): string {
+  return btoa(s).replace(/=+$/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+function b64urlDecode(s: string): string {
+  const padded = s + "=".repeat((4 - (s.length % 4)) % 4);
+  return atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
+}
+
+async function isCookieValid(token: string, secret: string): Promise<boolean> {
+  const [b64, sig] = token.split(".");
+  if (!b64 || !sig) return false;
+  const expected = await hmacHex(b64, secret);
+  // Constant-time-ish: both same length here so plain compare is fine
+  if (sig !== expected) return false;
+  try {
+    const payload = JSON.parse(b64urlDecode(b64)) as { exp?: number };
+    return typeof payload.exp === "number" && Date.now() / 1000 < payload.exp;
+  } catch {
+    return false;
+  }
+}
+
+async function makeCookieToken(secret: string): Promise<string> {
+  const payload = JSON.stringify({
+    u: "admin",
+    exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECS,
+  });
+  const b64 = b64urlEncode(payload);
+  const sig = await hmacHex(b64, secret);
+  return `${b64}.${sig}`;
+}
+
+function isAdminPath(path: string): boolean {
+  // Cover with-and-without basePath since req.nextUrl.pathname can differ on
+  // Vercel between direct hits and rewrite paths.
+  return (
     path === "/admin" ||
     path.startsWith("/admin/") ||
     path === "/admin-hub" ||
@@ -21,44 +75,59 @@ export function middleware(req: NextRequest) {
     path === "/insights/admin-hub" ||
     path.startsWith("/insights/admin-hub/") ||
     path === "/insights/api/admin" ||
-    path.startsWith("/insights/api/admin/");
+    path.startsWith("/insights/api/admin/")
+  );
+}
 
-  if (!isAdmin) return NextResponse.next();
+export async function middleware(req: NextRequest) {
+  if (!isAdminPath(req.nextUrl.pathname)) return NextResponse.next();
 
   const expected = process.env.ADMIN_PASSWORD;
-  if (!expected) {
-    return new NextResponse("ADMIN_PASSWORD not configured", { status: 500 });
+  const sessionSecret = process.env.ADMIN_SESSION_SECRET;
+  if (!expected || !sessionSecret) {
+    return new NextResponse(
+      "ADMIN_PASSWORD or ADMIN_SESSION_SECRET not configured",
+      { status: 500 },
+    );
   }
 
+  // 1. Try SSO cookie
+  const cookie = req.cookies.get(COOKIE_NAME)?.value;
+  if (cookie && (await isCookieValid(cookie, sessionSecret))) {
+    return NextResponse.next();
+  }
+
+  // 2. Try Basic Auth
   const auth = req.headers.get("authorization") ?? "";
   const [scheme, encoded] = auth.split(" ");
   if (scheme === "Basic" && encoded) {
     try {
       const decoded = atob(encoded);
       const [, pwd] = decoded.split(":");
-      if (pwd === expected) return NextResponse.next();
+      if (pwd === expected) {
+        // Auth OK — pass through AND set cookie so the next hop is seamless.
+        const token = await makeCookieToken(sessionSecret);
+        const res = NextResponse.next();
+        res.cookies.set(COOKIE_NAME, token, {
+          path: "/",
+          httpOnly: true,
+          secure: true,
+          sameSite: "lax",
+          maxAge: SESSION_TTL_SECS,
+        });
+        return res;
+      }
     } catch {}
   }
 
   return new NextResponse("Authentication required", {
     status: 401,
-    // Same realm name across all i10 admins so the browser caches credentials
-    // once for the host and reuses across /admin, /insights/admin, /bncc/admin.
-    headers: { "WWW-Authenticate": 'Basic realm="Instituto i10 Admin"' },
+    headers: { "WWW-Authenticate": `Basic realm="${REALM}"` },
   });
 }
 
-// Run middleware on all paths so the function above sees them. The matcher
-// excludes static assets and the public-facing newsletter API.
 export const config = {
   matcher: [
-    /*
-     * Match every path except:
-     * - _next/static, _next/image, favicon, robots.txt, sitemap.xml
-     * - public newsletter routes (/api/newsletter/...)
-     * - public webhook (/api/webhooks/...)
-     * - public cron (/api/cron/... — has its own Bearer auth)
-     */
     "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|api/newsletter|api/webhooks|api/cron).*)",
   ],
 };
