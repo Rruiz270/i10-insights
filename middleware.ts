@@ -12,10 +12,14 @@ export function middleware(req: NextRequest) {
   const isAdmin =
     path === "/admin" ||
     path.startsWith("/admin/") ||
+    path === "/admin-hub" ||
+    path.startsWith("/admin-hub/") ||
     path === "/api/admin" ||
     path.startsWith("/api/admin/") ||
     path === "/insights/admin" ||
     path.startsWith("/insights/admin/") ||
+    path === "/insights/admin-hub" ||
+    path.startsWith("/insights/admin-hub/") ||
     path === "/insights/api/admin" ||
     path.startsWith("/insights/api/admin/");
 
@@ -38,7 +42,9 @@ export function middleware(req: NextRequest) {
 
   return new NextResponse("Authentication required", {
     status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="i10 Insights Admin"' },
+    // Same realm name across all i10 admins so the browser caches credentials
+    // once for the host and reuses across /admin, /insights/admin, /bncc/admin.
+    headers: { "WWW-Authenticate": 'Basic realm="Instituto i10 Admin"' },
   });
 }
 
