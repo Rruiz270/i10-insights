@@ -36,12 +36,12 @@ const VERTICALS: Vertical[] = [
     key: "captacao",
     name: "BNCC Captação",
     description:
-      "Dashboard APM — downloads do kit de implementação e métricas do email marketing enviado pós-evento.",
+      "Dashboard APM — cadastro de leads, downloads do kit, métricas de email marketing e treinamento operacional da plataforma.",
     href: "/sistemas/apm/dashboard",
     accentClass: "from-navy to-navy-light",
     iconLetter: "C",
     status: "live",
-    meta: "APM · Downloads · Email marketing",
+    meta: "APM · Downloads · Email marketing · Treinamento",
   },
   {
     key: "computacao",
