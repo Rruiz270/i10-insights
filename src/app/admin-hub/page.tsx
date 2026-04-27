@@ -37,7 +37,8 @@ const VERTICALS: Vertical[] = [
     name: "BNCC Captação",
     description:
       "Dashboard APM — cadastro de leads, downloads do kit, métricas de email marketing e treinamento operacional da plataforma.",
-    href: "/sistemas/apm/dashboard",
+    href: "https://i10-audit-crm.vercel.app/apm/dashboard",
+    external: true,
     accentClass: "from-navy to-navy-light",
     iconLetter: "C",
     status: "live",
