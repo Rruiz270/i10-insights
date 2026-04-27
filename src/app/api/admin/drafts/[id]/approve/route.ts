@@ -18,12 +18,12 @@ const CATEGORY_LABELS: Record<string, string> = {
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.institutoi10.com.br";
 
-function buildDigestHtml(article: Record<string, string>): string {
-  const categoryLabel = CATEGORY_LABELS[article.category] ?? article.category;
+function buildDigestHtml(article: Record<string, unknown>): string {
+  const categoryLabel = CATEGORY_LABELS[String(article.category)] ?? article.category;
   const articleUrl = `${SITE_URL}/insights/pt/articles/${article.slug_pt}`;
-  const excerpt = article.excerpt_pt;
+  const excerpt = String(article.excerpt_pt);
   const heroHtml = article.hero_image_url
-    ? `<img src="${article.hero_image_url}" alt="${article.hero_image_alt_pt ?? ""}" style="width:100%;border-radius:8px;margin-bottom:20px;" />`
+    ? `<img src="${article.hero_image_url}" alt="${String(article.hero_image_alt_pt ?? "")}" style="width:100%;border-radius:8px;margin-bottom:20px;" />`
     : "";
 
   return `
@@ -41,21 +41,22 @@ function buildDigestHtml(article: Record<string, string>): string {
     </p>`;
 }
 
-function buildDigestText(article: Record<string, string>): string {
-  const categoryLabel = CATEGORY_LABELS[article.category] ?? article.category;
+function buildDigestText(article: Record<string, unknown>): string {
+  const categoryLabel = CATEGORY_LABELS[String(article.category)] ?? article.category;
   const articleUrl = `${SITE_URL}/insights/pt/articles/${article.slug_pt}`;
   return `${categoryLabel}\n\n${article.title_pt}\n\n${article.excerpt_pt}\n\nLeia o artigo completo: ${articleUrl}\n\n— i10 Insights`;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sendDigestToSubscribers(
-  sql: ReturnType<typeof neon>,
-  article: Record<string, string>,
+  sql: any,
+  article: Record<string, unknown>,
 ) {
-  const subscribers = await sql`
+  const subscribers = (await sql`
     SELECT id, email FROM insights.subscribers
     WHERE status = 'confirmed'
     ORDER BY created_at
-  `;
+  `) as Array<{ id: string; email: string }>;
 
   if (subscribers.length === 0) return { sent: 0, errors: 0 };
 
@@ -148,7 +149,7 @@ export async function POST(
   revalidatePath(`/en/articles/${d.slug_en}`);
   revalidatePath("/sitemap.xml");
 
-  const emailResult = await sendDigestToSubscribers(sql, d as Record<string, string>);
+  const emailResult = await sendDigestToSubscribers(sql, d as Record<string, unknown>);
 
   return NextResponse.json({
     ok: true,
