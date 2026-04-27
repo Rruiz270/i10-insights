@@ -6,14 +6,14 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const sql = neon(process.env.DATABASE_URL!);
   const rows = (await sql`
-    SELECT email, status, locale, created_at, confirmed_at,
+    SELECT email, status, source, locale, created_at, confirmed_at,
            unsubscribed_at, signup_ip::text, consent_text_version
     FROM insights.subscribers
     ORDER BY created_at DESC
   `) as Array<Record<string, unknown>>;
 
   const header = [
-    "email", "status", "locale", "created_at", "confirmed_at",
+    "email", "status", "source", "locale", "created_at", "confirmed_at",
     "unsubscribed_at", "signup_ip", "consent_text_version",
   ];
   const escape = (v: unknown) => {

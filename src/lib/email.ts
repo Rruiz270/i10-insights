@@ -8,6 +8,7 @@ interface SendArgs {
   subject: string;
   html: string;
   text: string;
+  headers?: Record<string, string>;
 }
 
 interface SendResult {
@@ -56,6 +57,7 @@ export async function sendEmail(args: SendArgs): Promise<SendResult> {
       subject: args.subject,
       html: args.html,
       text: args.text,
+      ...(args.headers ? { headers: args.headers } : {}),
     });
     return { ok: true, id: info.messageId };
   } catch (err) {
@@ -68,11 +70,22 @@ export async function sendEmail(args: SendArgs): Promise<SendResult> {
 }
 
 // ── Branded layout shared with BNCC-COMPUTACAO so all i10 emails look alike ──
-export function wrapEmailLayout(bodyHtml: string, locale: "pt" | "en" = "pt"): string {
+export function wrapEmailLayout(
+  bodyHtml: string,
+  locale: "pt" | "en" = "pt",
+  unsubscribeUrl?: string,
+): string {
   const tagline =
     locale === "pt"
       ? "Orquestrando o Futuro da Educação Pública"
       : "Orchestrating the Future of Public Education";
+  const unsubLine = unsubscribeUrl
+    ? `<p style="color:rgba(255,255,255,0.5);font-size:11px;margin:0 0 8px;">
+        <a href="${unsubscribeUrl}" style="color:rgba(255,255,255,0.5);text-decoration:underline;">
+          ${locale === "pt" ? "Cancelar inscrição" : "Unsubscribe"}
+        </a>
+      </p>`
+    : "";
   return `<!DOCTYPE html>
 <html lang="${locale === "pt" ? "pt-BR" : "en-US"}">
 <head><meta charset="UTF-8"></head>
@@ -86,6 +99,7 @@ export function wrapEmailLayout(bodyHtml: string, locale: "pt" | "en" = "pt"): s
       ${bodyHtml}
     </div>
     <div style="background:#061840;border-radius:0 0 16px 16px;padding:20px 24px;text-align:center;">
+      ${unsubLine}
       <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0 0 4px;font-style:italic;">${tagline}</p>
       <p style="color:rgba(255,255,255,0.3);font-size:11px;margin:0;">© ${new Date().getFullYear()} Instituto i10 · institutoi10.com.br</p>
     </div>
