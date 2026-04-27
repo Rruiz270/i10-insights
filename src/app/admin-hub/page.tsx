@@ -55,6 +55,17 @@ const VERTICALS: Vertical[] = [
     meta: "Leads · Inscritos · Downloads",
   },
   {
+    key: "marketing",
+    name: "Marketing Digital",
+    description:
+      "Calendário editorial Instagram, dashboard Meta (campanhas + orgânico), fila de produção e integração Manus AI para geração de assets.",
+    href: "/marketing",
+    accentClass: "from-cyan to-green",
+    iconLetter: "M",
+    status: "live",
+    meta: "Calendário · Campanhas · Manus AI",
+  },
+  {
     key: "soon",
     name: "Em breve",
     description:
