@@ -96,7 +96,7 @@ export default async function DraftDetail({
       </section>
 
       {d.status === "pending" && (
-        <ApproveRejectButtons id={String(d.id)} />
+        <ApproveRejectButtons id={String(d.id)} category={String(d.category)} />
       )}
     </main>
   );
