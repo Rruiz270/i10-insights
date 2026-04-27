@@ -31,28 +31,28 @@ export default async function SubscribePage({ searchParams }: Props) {
           {!valid ? (
             <>
               <h2 className="font-serif text-2xl text-navy">
-                Link invalido
+                Link inválido
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-gray-600">
-                Este link de inscricao e invalido ou expirou. Se voce acredita
-                que isso e um erro, entre em contato conosco.
+                Este link de inscrição é inválido ou expirou. Se você acredita
+                que isso é um erro, entre em contato conosco.
               </p>
             </>
           ) : (
             <>
               <h2 className="font-serif text-2xl text-navy">
-                Confirmar inscricao
+                Confirmar inscrição
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-gray-600">
-                Voce esta confirmando a inscricao do e-mail:
+                Você está confirmando a inscrição do e-mail:
               </p>
               <p className="mt-2 rounded-lg bg-gray-50 px-4 py-3 text-center font-mono text-sm font-semibold text-navy">
                 {email}
               </p>
               <p className="mt-4 text-sm leading-relaxed text-gray-600">
-                Ao confirmar, voce passara a receber o{" "}
-                <strong>i10 Insights</strong> — analise diaria sobre IA na
-                educacao brasileira, todo dia util. Gratuito, sem spam. Cancele
+                Ao confirmar, você passará a receber o{" "}
+                <strong>i10 Insights</strong> — análise diária sobre IA na
+                educação brasileira, todo dia útil. Gratuito, sem spam. Cancele
                 quando quiser.
               </p>
 
@@ -61,8 +61,8 @@ export default async function SubscribePage({ searchParams }: Props) {
               </div>
 
               <p className="mt-6 text-center text-xs leading-relaxed text-gray-400">
-                Em conformidade com a LGPD (Lei 13.709/2018). Seus dados sao
-                usados exclusivamente para o envio do boletim e nunca serao
+                Em conformidade com a LGPD (Lei 13.709/2018). Seus dados são
+                usados exclusivamente para o envio do boletim e nunca serão
                 compartilhados com terceiros.
               </p>
             </>
@@ -72,7 +72,7 @@ export default async function SubscribePage({ searchParams }: Props) {
         {/* Footer */}
         <div className="rounded-b-2xl bg-navy-dark px-8 py-5 text-center">
           <p className="text-xs italic text-white/40">
-            Orquestrando o Futuro da Educacao Publica
+            Orquestrando o Futuro da Educação Pública
           </p>
           <p className="mt-1 text-xs text-white/30">
             &copy; {new Date().getFullYear()} Instituto i10 &middot;

@@ -41,9 +41,9 @@ export default function SubscribeButton({ email, token, source }: Props) {
   if (state === "success") {
     return (
       <div className="rounded-lg bg-green-pale px-6 py-4 text-center">
-        <p className="text-lg font-bold text-navy">Inscricao confirmada!</p>
+        <p className="text-lg font-bold text-navy">Inscrição confirmada!</p>
         <p className="mt-1 text-sm text-gray-600">
-          Voce ja esta na lista do i10 Insights. Ate o proximo boletim!
+          Você já está na lista do i10 Insights. Até o próximo boletim!
         </p>
       </div>
     );
@@ -52,10 +52,10 @@ export default function SubscribeButton({ email, token, source }: Props) {
   if (state === "already") {
     return (
       <div className="rounded-lg bg-cyan-pale px-6 py-4 text-center">
-        <p className="text-lg font-bold text-navy">Voce ja esta inscrito!</p>
+        <p className="text-lg font-bold text-navy">Você já está inscrito!</p>
         <p className="mt-1 text-sm text-gray-600">
-          Este e-mail ja consta na nossa lista. Nenhuma acao adicional
-          necessaria.
+          Este e-mail já consta na nossa lista. Nenhuma ação adicional
+          necessária.
         </p>
       </div>
     );
@@ -84,7 +84,7 @@ export default function SubscribeButton({ email, token, source }: Props) {
       disabled={state === "loading"}
       className="w-full cursor-pointer rounded-lg bg-green px-6 py-4 text-base font-bold text-navy-dark transition hover:brightness-110 disabled:cursor-wait disabled:opacity-70"
     >
-      {state === "loading" ? "Confirmando..." : "Confirmar inscricao"}
+      {state === "loading" ? "Confirmando..." : "Confirmar inscrição"}
     </button>
   );
 }

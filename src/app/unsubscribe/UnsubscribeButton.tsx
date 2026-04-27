@@ -35,9 +35,9 @@ export default function UnsubscribeButton({ email, token }: Props) {
   if (state === "success") {
     return (
       <div className="rounded-lg bg-gray-100 px-6 py-4 text-center">
-        <p className="text-lg font-bold text-navy">Inscricao cancelada</p>
+        <p className="text-lg font-bold text-navy">Inscrição cancelada</p>
         <p className="mt-1 text-sm text-gray-600">
-          Voce foi removido da lista do i10 Insights. Sentiremos sua falta!
+          Você foi removido da lista do i10 Insights. Sentiremos sua falta!
         </p>
       </div>
     );
@@ -66,7 +66,7 @@ export default function UnsubscribeButton({ email, token }: Props) {
       disabled={state === "loading"}
       className="w-full cursor-pointer rounded-lg border-2 border-red-300 bg-white px-6 py-4 text-base font-bold text-red-600 transition hover:bg-red-50 disabled:cursor-wait disabled:opacity-70"
     >
-      {state === "loading" ? "Cancelando..." : "Cancelar inscricao"}
+      {state === "loading" ? "Cancelando..." : "Cancelar inscrição"}
     </button>
   );
 }
