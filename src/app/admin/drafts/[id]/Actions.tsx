@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
 export function ApproveRejectButtons({
   id,
   category,
@@ -22,7 +24,7 @@ export function ApproveRejectButtons({
   async function approve() {
     setBusy("approve");
     setError(null);
-    const r = await fetch(`/api/admin/drafts/${id}/approve`, {
+    const r = await fetch(`${BASE}/api/admin/drafts/${id}/approve`, {
       method: "POST",
     });
     if (!r.ok) {
@@ -36,7 +38,7 @@ export function ApproveRejectButtons({
   async function reject() {
     setBusy("reject");
     setError(null);
-    const r = await fetch(`/api/admin/drafts/${id}/reject`, {
+    const r = await fetch(`${BASE}/api/admin/drafts/${id}/reject`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reason: feedback, regenerate: false }),
@@ -56,7 +58,7 @@ export function ApproveRejectButtons({
     }
     setBusy("revise");
     setError(null);
-    const r = await fetch(`/api/admin/drafts/${id}/reject`, {
+    const r = await fetch(`${BASE}/api/admin/drafts/${id}/reject`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
