@@ -20,26 +20,65 @@ const base = process.env.DATABASE_URL;
 const swap = (db) => base.replace(/\/[A-Za-z0-9_-]+(\?)/, `/${db}$1`);
 
 const clean = (s) => (s == null ? null : String(s).trim() || null);
-const cleanPhone = (s) => {
-  const d = String(s ?? "").replace(/\D/g, "");
-  return d.length >= 10 ? d : null;
-};
 const cleanEmail = (s) => {
   const v = String(s ?? "").trim().toLowerCase();
   return v.includes("@") && v.split("@")[1]?.includes(".") ? v : null;
 };
 
+// ── Normalization (so the base reads consistently across all sources) ──
+const MINOR = new Set(["de", "da", "do", "das", "dos", "e", "di", "du", "von"]);
+function titleCase(s) {
+  s = clean(s);
+  if (!s) return null;
+  if (s.length <= 3 && s === s.toUpperCase()) return s; // keep acronyms (SP, RJ)
+  return s
+    .toLowerCase()
+    .split(/\s+/)
+    .map((w, i) => (i > 0 && MINOR.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join(" ");
+}
+
+// Brazilian phones → "(DD) 9XXXX-XXXX" / "(DD) XXXX-XXXX". Strips the 55 country
+// code; leaves anything unrecognizable as raw digits (better than dropping it).
+function fmtPhone(s) {
+  let d = String(s ?? "").replace(/\D/g, "");
+  if (d.length > 11 && d.startsWith("55")) d = d.slice(2);
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return d.length >= 8 ? d : null;
+}
+
+// One stable, meaningful display name per role.
+function displayName(role, rawName, municipio) {
+  if (role === "prefeitura" || role === "gabinete")
+    return municipio ? `Prefeitura de ${municipio}` : "Prefeitura";
+  if (role === "educacao")
+    return municipio ? `Secretaria de Educação de ${municipio}` : "Secretaria de Educação";
+  return titleCase(rawName);
+}
+
 function row(r) {
   const email = cleanEmail(r.email);
-  const phone = cleanPhone(r.phone);
+  const phone = fmtPhone(r.phone);
   if (!email && !phone) return null;
+
+  const municipio = titleCase(r.municipio);
+  const role = clean(r.role);
+  const attributes = { ...(r.attributes ?? {}) };
+  // Preserve the mayor on institutional rows where we replace the name.
+  if ((role === "prefeitura" || role === "gabinete") && r.name && !/\(/.test(r.name)) {
+    attributes.prefeito = titleCase(r.name);
+  }
+
   return {
     email, phone,
-    name: clean(r.name), role: clean(r.role),
-    municipio: clean(r.municipio), uf: r.uf ? String(r.uf).toUpperCase() : null,
+    name: displayName(role, r.name, municipio),
+    role,
+    municipio,
+    uf: r.uf ? String(r.uf).toUpperCase() : null,
     source: r.source, segment: clean(r.segment),
     consent: typeof r.consent === "boolean" ? r.consent : null,
-    attributes: r.attributes ?? {},
+    attributes,
   };
 }
 
@@ -163,6 +202,11 @@ async function main() {
     `Coletado: ${collected.length} → ${all.length} após dedup |`,
     JSON.stringify(bySrc),
   );
+
+  if (process.env.FRESH === "1") {
+    console.log("FRESH=1 → TRUNCATE audience.contacts");
+    await sql`TRUNCATE audience.contacts RESTART IDENTITY`;
+  }
 
   console.log("Upsert em audience.contacts...");
   await upsert(sql, all);

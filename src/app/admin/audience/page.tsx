@@ -5,6 +5,16 @@ export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 50;
 
+// Human labels for the machine role keys.
+const ROLE_LABEL: Record<string, string> = {
+  prefeito: "Prefeito(a)",
+  prefeitura: "Prefeitura",
+  gabinete: "Prefeitura",
+  educacao: "Sec. Educação",
+  inscrito: "Inscrito",
+  lead: "Lead",
+};
+
 // Human labels for the machine source keys.
 const SOURCE_LABEL: Record<string, string> = {
   "bncc-webinar": "BNCC Computação — inscritos",
@@ -80,7 +90,7 @@ async function load(f: Filters) {
   const rows = (await sql.query(
     `SELECT name, role, email, phone, municipio, uf, source, segment, consent, created_at
      FROM audience.contacts ${whereSql}
-     ORDER BY created_at DESC, id DESC
+     ORDER BY uf NULLS LAST, municipio NULLS LAST, role, name
      LIMIT ${PAGE_SIZE} OFFSET ${(f.page - 1) * PAGE_SIZE}`,
     params,
   )) as unknown as Array<{
@@ -234,7 +244,11 @@ export default async function AudiencePage({
               {rows.map((r, i) => (
                 <tr key={i} className="hover:bg-off-white">
                   <td className="px-4 py-3 font-medium text-navy">{r.name ?? "—"}</td>
-                  <td className="px-4 py-3 text-gray-600">{r.role ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">
+                      {r.role ? ROLE_LABEL[r.role] ?? r.role : "—"}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-gray-700">{r.email ?? "—"}</td>
                   <td className="px-4 py-3 text-gray-700">{r.phone ?? "—"}</td>
                   <td className="px-4 py-3 text-gray-600">{r.municipio ?? "—"}</td>
