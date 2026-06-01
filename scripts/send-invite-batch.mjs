@@ -1,8 +1,11 @@
 /**
- * Batch invitation script — fetches subscribers from BNCC Computação and sends
- * i10 Insights invite emails with one-click subscribe links.
+ * Batch invitation script — collects the opt-in audience from the shared Neon
+ * (via the Audience Hub, no cross-app token) and sends i10 Insights invite
+ * emails with one-click subscribe links.
  *
- * Usage: node --env-file=.env.local scripts/send-invite-batch.mjs
+ * Usage:
+ *   node --env-file=.env.local scripts/send-invite-batch.mjs          # sends
+ *   DRY_RUN=1 node --env-file=.env.local scripts/send-invite-batch.mjs # preview only
  *
  * Env vars required:
  *   DATABASE_URL, GMAIL_USER, GMAIL_APP_PASSWORD,
@@ -11,13 +14,12 @@
 
 import { neon } from "@neondatabase/serverless";
 import nodemailer from "nodemailer";
+import { getInviteAudience, SOURCES } from "./lib/audience.mjs";
 
 // ── Config ──────────────────────────────────────────────────────────
-const BNCC_API = "https://bncc-computacao.vercel.app/api/admin/subscribers";
-const BNCC_TOKEN = "i10admin2026";
 const DELAY_MS = 2000;
-const SOURCE = "bncc-computacao";
 const BASE_PATH = "/insights";
+const DRY_RUN = process.env.DRY_RUN === "1" || process.argv.includes("--dry");
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 // ── HMAC (same logic as src/lib/tokens.ts) ──────────────────────────
@@ -138,33 +140,40 @@ async function main() {
     }
   }
 
-  // 1. Fetch BNCC subscribers
-  console.log("Fetching BNCC Computação subscriber list...");
-  const res = await fetch(BNCC_API, {
-    headers: { Authorization: `Bearer ${BNCC_TOKEN}` },
-  });
-  if (!res.ok) {
-    console.error(`BNCC API error: ${res.status} ${res.statusText}`);
-    process.exit(1);
-  }
-  const bnccData = await res.json();
-  // The API may return { subscribers: [...] } or just [...]
-  const subscribers = Array.isArray(bnccData)
-    ? bnccData
-    : bnccData.subscribers ?? bnccData.data ?? [];
-
-  console.log(`Found ${subscribers.length} BNCC subscribers.`);
-
-  // 2. Check which ones already received invites
   const sql = neon(process.env.DATABASE_URL);
 
-  const alreadySent = await sql`
-    SELECT DISTINCT email FROM insights.email_log WHERE kind = 'invite'
-  `;
-  const sentSet = new Set(alreadySent.map((r) => r.email.toLowerCase()));
-  console.log(`Already sent invites to ${sentSet.size} emails. Skipping those.`);
+  // 1. Collect the opt-in audience directly from the shared Neon (no token).
+  //    The Hub already dedupes and excludes unsubscribed + already-invited.
+  console.log("Coletando audiência (Audience Hub, leitura direta)...");
+  const { audience: subscribers, perSource } = await getInviteAudience(
+    process.env.DATABASE_URL,
+  );
 
-  // 3. Set up SMTP
+  console.log("\nFontes:");
+  for (const src of SOURCES) {
+    if (!src.enabled) {
+      console.log(`  - ${src.key}: (desabilitada)`);
+      continue;
+    }
+    const s = perSource[src.key] ?? { rows: 0, newEmails: 0 };
+    console.log(`  - ${src.key}: ${s.rows} linhas → ${s.newEmails} novos`);
+  }
+  console.log(
+    `\nAudiência elegível (dedup + opt-in − unsub − já-convidados): ${subscribers.length}\n`,
+  );
+
+  if (DRY_RUN) {
+    console.log("=== DRY RUN — nada será enviado ===");
+    subscribers.slice(0, 50).forEach((s, i) =>
+      console.log(`  ${i + 1}. ${s.email}${s.name ? ` (${s.name})` : ""} · ${s.source}`),
+    );
+    if (subscribers.length > 50)
+      console.log(`  … e mais ${subscribers.length - 50}`);
+    console.log(`\nTotal a enviar: ${subscribers.length}`);
+    return;
+  }
+
+  // 2. Set up SMTP
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
@@ -174,7 +183,7 @@ async function main() {
   });
   const from = `i10 Insights <${process.env.GMAIL_USER}>`;
 
-  // 4. Send invites
+  // 3. Send invites
   let sent = 0;
   let skipped = 0;
   let errors = 0;
@@ -182,7 +191,7 @@ async function main() {
   for (let i = 0; i < subscribers.length; i++) {
     const sub = subscribers[i];
     const email = (sub.email ?? "").trim().toLowerCase();
-    const name = sub.name ?? sub.nome ?? "";
+    const name = sub.name ?? "";
 
     if (!email || !email.includes("@")) {
       console.log(`[${i + 1}/${subscribers.length}] SKIP — invalid email: ${email || "(empty)"}`);
@@ -190,14 +199,8 @@ async function main() {
       continue;
     }
 
-    if (sentSet.has(email)) {
-      console.log(`[${i + 1}/${subscribers.length}] SKIP — already sent: ${email}`);
-      skipped++;
-      continue;
-    }
-
     try {
-      const subscribeUrl = await buildSubscribeUrl(email, SOURCE);
+      const subscribeUrl = await buildSubscribeUrl(email, sub.source);
       const unsubscribeUrl = await buildUnsubscribeUrl(email);
       const bodyHtml = buildInviteBody(name, subscribeUrl);
       const html = wrapEmailLayout(bodyHtml, unsubscribeUrl);
