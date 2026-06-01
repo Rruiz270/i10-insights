@@ -33,6 +33,11 @@ async function getDashboardData(): Promise<{
     locale: string;
     created_at: string;
   }>;
+  cron: {
+    lastDailyAt: string | null;
+    lastDailyStatus: string | null;
+    lastReminderAt: string | null;
+  };
 }> {
   const sql = neon(process.env.DATABASE_URL!);
   const [drafts] = await sql`
@@ -65,6 +70,14 @@ async function getDashboardData(): Promise<{
   const [lastDraft] = await sql`
     SELECT max(created_at) AS at FROM insights.drafts
   `;
+  const [lastDaily] = (await sql`
+    SELECT created_at, status FROM insights.cron_log
+    WHERE job = 'daily-brief' ORDER BY created_at DESC LIMIT 1
+  `) as Array<{ created_at: string; status: string }>;
+  const [lastReminder] = (await sql`
+    SELECT created_at FROM insights.cron_log
+    WHERE job = 'approval-reminder' ORDER BY created_at DESC LIMIT 1
+  `) as Array<{ created_at: string }>;
 
   const recentDrafts = (await sql`
     SELECT id, title_pt, category, created_at,
@@ -109,11 +122,24 @@ async function getDashboardData(): Promise<{
     },
     recentDrafts,
     recentSubs,
+    cron: {
+      lastDailyAt: lastDaily?.created_at ?? null,
+      lastDailyStatus: lastDaily?.status ?? null,
+      lastReminderAt: lastReminder?.created_at ?? null,
+    },
   };
 }
 
 export default async function AdminHome() {
-  const { counts, recentDrafts, recentSubs } = await getDashboardData();
+  const { counts, recentDrafts, recentSubs, cron } = await getDashboardData();
+
+  // Staleness: on a normal weekday the daily-brief cron should have run within
+  // the last ~30h. No recent run (or never) means the pipeline is silently
+  // broken — surface it loudly instead of letting it vanish.
+  const lastDailyMs = cron.lastDailyAt ? Date.parse(cron.lastDailyAt) : null;
+  const hoursSinceDaily =
+    lastDailyMs != null ? (Date.now() - lastDailyMs) / 3_600_000 : null;
+  const cronStale = hoursSinceDaily == null || hoursSinceDaily > 30;
   return (
     <main className="min-h-screen bg-off-white">
       <header className="bg-navy-dark text-white">
@@ -269,17 +295,50 @@ export default async function AdminHome() {
           </ul>
         </section>
 
+        {/* Cron health banner — only when something looks wrong */}
+        {cronStale && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-4">
+            <p className="text-sm font-semibold text-red-700">
+              ⚠ Geração diária parada
+            </p>
+            <p className="mt-1 text-sm text-red-600">
+              {cron.lastDailyAt
+                ? `Última execução do cron foi ${new Date(cron.lastDailyAt).toLocaleString("pt-BR")} (${Math.round(hoursSinceDaily!)}h atrás). O esperado é a cada dia útil às 06:00 BRT.`
+                : "Nenhuma execução do cron registrada ainda. Verifique o path em vercel.json (deve incluir o basePath /insights) e o CRON_SECRET."}
+            </p>
+          </div>
+        )}
+
         {/* System info */}
         <section className="grid gap-4 sm:grid-cols-3">
           <SmallTile
-            label="Cron diário"
-            value="06:00 BRT"
-            sub="Seg-Sex · gera novo draft"
+            label="Última geração (cron)"
+            value={
+              cron.lastDailyAt
+                ? new Date(cron.lastDailyAt).toLocaleString("pt-BR", {
+                    dateStyle: "short",
+                    timeStyle: "short",
+                  })
+                : "nunca"
+            }
+            sub={
+              cron.lastDailyAt
+                ? `status: ${cron.lastDailyStatus ?? "?"} · 06:00 BRT seg-sex`
+                : "cron nunca registrou execução"
+            }
+            color={cronStale ? "text-red-600" : "text-green-dark"}
           />
           <SmallTile
-            label="Reminder de aprovação"
-            value="13:00 BRT"
-            sub="Seg-Sex · email se draft pendente"
+            label="Último reminder"
+            value={
+              cron.lastReminderAt
+                ? new Date(cron.lastReminderAt).toLocaleString("pt-BR", {
+                    dateStyle: "short",
+                    timeStyle: "short",
+                  })
+                : "nunca"
+            }
+            sub="13:00 BRT · email se draft pendente"
           />
           <SmallTile
             label="ISR revalidate"
@@ -329,17 +388,19 @@ function SmallTile({
   label,
   value,
   sub,
+  color,
 }: {
   label: string;
   value: string;
   sub: string;
+  color?: string;
 }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
       <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-500">
         {label}
       </p>
-      <p className="mt-1 font-serif text-lg text-navy">{value}</p>
+      <p className={`mt-1 font-serif text-lg ${color ?? "text-navy"}`}>{value}</p>
       <p className="text-xs text-gray-500">{sub}</p>
     </div>
   );

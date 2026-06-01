@@ -17,6 +17,18 @@ async function trigger(req: Request) {
 
   const sql = neon(process.env.DATABASE_URL!);
 
+  // Best-effort run log so the admin can confirm this cron is alive (see cron_log).
+  const logRun = async (status: "ok" | "error", detail: Record<string, unknown>) => {
+    try {
+      await sql`
+        INSERT INTO insights.cron_log (job, status, detail)
+        VALUES ('approval-reminder', ${status}, ${JSON.stringify(detail)}::jsonb)
+      `;
+    } catch {
+      /* observability is best-effort */
+    }
+  };
+
   // Drafts created today (UTC date) still pending. Today = same UTC day as
   // the cron's now() — at 16:00 UTC this means drafts since 00:00 UTC, which
   // covers the daily-brief cron that ran at 09:00 UTC the same day.
@@ -38,6 +50,7 @@ async function trigger(req: Request) {
   }>;
 
   if (drafts.length === 0) {
+    await logRun("ok", { action: "no_pending_drafts_skipped" });
     return NextResponse.json({
       ok: true,
       action: "no_pending_drafts_skipped",
@@ -103,6 +116,7 @@ async function trigger(req: Request) {
     VALUES (NULL, ${REMINDER_TO}, 'approval-reminder', ${"Aprovação pendente · i10 Insights"}, ${sent.id ?? null})
   `;
 
+  await logRun("ok", { action: "reminder_sent", drafts: drafts.length, email_id: sent.id ?? null });
   return NextResponse.json({
     ok: true,
     action: "reminder_sent",

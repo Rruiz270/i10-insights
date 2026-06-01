@@ -1,11 +1,11 @@
 {
   "crons": [
     {
-      "path": "/api/cron/daily-brief",
+      "path": "/insights/api/cron/daily-brief",
       "schedule": "0 9 * * 1-5"
     },
     {
-      "path": "/api/cron/approval-reminder",
+      "path": "/insights/api/cron/approval-reminder",
       "schedule": "0 16 * * 1-5"
     }
   ]
