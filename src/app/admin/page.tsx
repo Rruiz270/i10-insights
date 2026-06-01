@@ -150,12 +150,20 @@ export default async function AdminHome() {
             </p>
             <h1 className="mt-1 font-serif text-2xl">Admin</h1>
           </div>
-          <Link
-            href="/pt"
-            className="text-xs font-semibold uppercase tracking-wider text-white/60 hover:text-white"
-          >
-            ↗ Site público
-          </Link>
+          <div className="flex items-center gap-5">
+            <Link
+              href="/admin/audience"
+              className="text-xs font-semibold uppercase tracking-wider text-cyan-pale hover:text-white"
+            >
+              Audiência →
+            </Link>
+            <Link
+              href="/pt"
+              className="text-xs font-semibold uppercase tracking-wider text-white/60 hover:text-white"
+            >
+              ↗ Site público
+            </Link>
+          </div>
         </div>
       </header>
 
